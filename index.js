@@ -42,6 +42,7 @@ function responseGenerator(schema) {
 }
 
 function formatParameters(schema) {
+    schema = Object.assign({}, schema);
     let parameters = [];
     // Body schema
     if (joi.isSchema(schema.body)) {
