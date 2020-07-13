@@ -2,6 +2,7 @@ let joi = require('@hapi/joi');
 let _ = require('lodash');
 let j2s = require('joi-to-swagger');
 let SwaggerUI = require('swagger-ui-express');
+let { REQ_DATA } = require('./constants/constants');
 
 // Convert Joi schema as swagger json
 function convertJoiSchema(schema) {
@@ -56,6 +57,7 @@ function formatParameters(schema) {
     locations.forEach(location => {
         if (joi.isSchema(schema[location])) {
             let convertedSchema = convertJoiSchema(schema[location]);
+            location = REQ_DATA[location];
             let swaggerJSON = paramsGenerator(convertedSchema, location);
             parameters = parameters.concat(swaggerJSON);
         }
