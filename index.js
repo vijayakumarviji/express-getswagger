@@ -32,11 +32,17 @@ function bodyGenerator(schema) {
     return swaggerBody;
 }
 
-function responseGenerator(schema) {
+function responseGenerator(schema, {schema: baseSchema = {}} = {}) {
+    let finalSchema = JSON.parse(JSON.stringify(baseSchema));
+    if(_.has(finalSchema, 'properties')) {
+        finalSchema.properties.data = schema;
+    } else {
+        finalSchema = schema;
+    }
     let swaggerResponse = {
         "200": {
             "description": "successful operation",
-            "schema": schema
+            "schema": finalSchema
         }
     }
     return swaggerResponse;
@@ -77,7 +83,7 @@ function formatApiPath(apiPath, regex = '') {
 }
 
 
-function generateSwagger(express, app, {  path = '/api-docs', pathRegex, apiInfos = [], swaggerInfo = {} } = {}) {
+function generateSwagger(express, app, {  path = '/api-docs', pathRegex, apiInfos = [], swaggerInfo = {}, responseBase } = {}) {
     if (!express || !app || !apiInfos.length) return;
     let locations = {};
 
@@ -89,10 +95,11 @@ function generateSwagger(express, app, {  path = '/api-docs', pathRegex, apiInfo
         locations[apiPath] = locations[apiPath] || {};
         // Response schema
         let responseSwaggerJSON;
+        let convertedResponseSchema = '';
         if (joi.isSchema(response)) {
-            let convertedResponseSchema = convertJoiSchema(response);
-            responseSwaggerJSON = responseGenerator(convertedResponseSchema);
+            convertedResponseSchema = convertJoiSchema(response);
         }
+        responseSwaggerJSON = responseGenerator(convertedResponseSchema, responseBase);
         // Parameter & body schema
         let parameters = formatParameters(request);
         let pathInfo = {
