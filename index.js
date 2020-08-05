@@ -13,7 +13,10 @@ function convertJoiSchema(schema) {
 function paramsGenerator(schema, location) {
     let swaggerParams = [];
     _.mapKeys(schema.properties, (value, key) => {
-        if (schema.required && schema.required.includes(key)) {
+        value = {
+            schema: value
+        }
+        if ((schema.required && schema.required.includes(key)) || location == 'path') {
             value.required = true;
         }
         value.name = key;
@@ -23,11 +26,15 @@ function paramsGenerator(schema, location) {
     return swaggerParams;
 }
 
-function bodyGenerator(schema) {
+function resquestBodyGenerator(schema) {
     let swaggerBody = {
-        "in": "body",
-        "name": "body",
-        "schema": schema
+        description: "Optional description in *Markdown*",
+        required: true,
+        content: {
+          'application/json': {
+              schema
+          }
+        }
     };
     return swaggerBody;
 }
@@ -42,7 +49,11 @@ function responseGenerator(schema, {schema: baseSchema = {}} = {}) {
     let swaggerResponse = {
         "200": {
             "description": "successful operation",
-            "schema": finalSchema
+            content: {
+                'application/json': {
+                    "schema": finalSchema
+                }
+            }
         }
     }
     return swaggerResponse;
@@ -54,8 +65,7 @@ function formatParameters(schema) {
     // Body schema
     if (joi.isSchema(schema.body)) {
         let convertedBodySchema = convertJoiSchema(schema.body);
-        let bodySwaggerJSON = bodyGenerator(convertedBodySchema);
-        parameters.push(bodySwaggerJSON);
+        // let bodySwaggerJSON = bodyGenerator(convertedBodySchema);
         delete schema.body;
     }
     // Params schema
@@ -90,32 +100,34 @@ function generateSwagger(express, app, {  path = '/api-docs', pathRegex, apiInfo
     apiInfos.forEach(apiInfo => {
         let { apiPath, method, tags, summary, schema = {} } = apiInfo;
         let {request = {}, response = {}} = schema;
+        let {body: requestBody} = request;
         // Format apiPath as per swagger docs
         apiPath = formatApiPath(apiPath, pathRegex);
         locations[apiPath] = locations[apiPath] || {};
-        // Response schema
-        let responseSwaggerJSON;
-        let convertedResponseSchema = '';
+        let convertedRequestBodySchema = '', convertedResponseSchema = '';
         if (joi.isSchema(response)) {
             convertedResponseSchema = convertJoiSchema(response);
         }
-        responseSwaggerJSON = responseGenerator(convertedResponseSchema, responseBase);
+        if (joi.isSchema(requestBody)) {
+            convertedRequestBodySchema = convertJoiSchema(requestBody);
+        }
         // Parameter & body schema
         let parameters = formatParameters(request);
         let pathInfo = {
             tags,
             summary,
             parameters,
-            responses: responseSwaggerJSON
+            requestBody: resquestBodyGenerator(convertedRequestBodySchema),
+            responses: responseGenerator(convertedResponseSchema, responseBase)
         };
         locations[apiPath][method] = pathInfo;
     });
 
     let swaggerDocument = Object.assign({
-        swagger: "2.0",
+        openapi: "3.0.0",
         paths: locations
     }, swaggerInfo);
-    
+    console.log(JSON.stringify(swaggerDocument))
     app.use(path, express.static('public'));
     app.use(path, SwaggerUI.serve, SwaggerUI.setup(swaggerDocument));
 
