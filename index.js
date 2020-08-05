@@ -127,7 +127,6 @@ function generateSwagger(express, app, {  path = '/api-docs', pathRegex, apiInfo
         openapi: "3.0.0",
         paths: locations
     }, swaggerInfo);
-    console.log(JSON.stringify(swaggerDocument))
     app.use(path, express.static('public'));
     app.use(path, SwaggerUI.serve, SwaggerUI.setup(swaggerDocument));
 
